@@ -1,9 +1,60 @@
 import React, { useMemo } from 'react';
 import ReactDiffViewer, { DiffMethod } from 'react-diff-viewer-continued';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-bash';
+import 'prismjs/components/prism-json';
+import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-typescript';
+import 'prismjs/components/prism-yaml';
 
 interface DiffViewerProps {
   payload: string;
 }
+
+type SupportedLanguage = 'bash' | 'json' | 'python' | 'typescript' | 'yaml';
+
+const LANGUAGE_BY_EXTENSION: Record<string, SupportedLanguage> = {
+  bash: 'bash',
+  json: 'json',
+  py: 'python',
+  sh: 'bash',
+  ts: 'typescript',
+  tsx: 'typescript',
+  yaml: 'yaml',
+  yml: 'yaml'
+};
+
+const FILE_PATH_KEYS = new Set([
+  'file',
+  'filepath',
+  'file_path',
+  'filename',
+  'path',
+  'targetfile',
+  'target_file'
+]);
+
+const findFilePath = (value: unknown): string | undefined => {
+  if (!value || typeof value !== 'object') return undefined;
+
+  for (const [key, entry] of Object.entries(value)) {
+    if (FILE_PATH_KEYS.has(key.toLowerCase()) && typeof entry === 'string') {
+      return entry;
+    }
+  }
+
+  for (const entry of Object.values(value)) {
+    const nestedPath = findFilePath(entry);
+    if (nestedPath) return nestedPath;
+  }
+
+  return undefined;
+};
+
+const detectLanguage = (filePath: string | undefined, isJson: boolean): SupportedLanguage => {
+  const extension = filePath?.split('.').pop()?.toLowerCase();
+  return (extension && LANGUAGE_BY_EXTENSION[extension]) || (isJson ? 'json' : 'typescript');
+};
 
 export const DiffViewer: React.FC<DiffViewerProps> = ({ payload }) => {
   const parsedData = useMemo(() => {
@@ -51,6 +102,20 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ payload }) => {
     return payload;
   }, [parsedData, payload]);
 
+  const language = useMemo(
+    () => detectLanguage(findFilePath(parsedData), parsedData !== null),
+    [parsedData]
+  );
+
+  const renderHighlightedContent = (source: string) => (
+    <code
+      className={`language-${language} whitespace-pre-wrap break-words`}
+      dangerouslySetInnerHTML={{
+        __html: Prism.highlight(source, Prism.languages[language], language)
+      }}
+    />
+  );
+
   const darkThemeStyles = {
     variables: {
       dark: {
@@ -97,6 +162,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ payload }) => {
             splitView={true}
             useDarkTheme={true}
             compareMethod={DiffMethod.WORDS}
+            renderContent={renderHighlightedContent}
             styles={darkThemeStyles}
             leftTitle="Original State (Disk)"
             rightTitle="AI Requested State (Proposed)"
@@ -113,7 +179,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ payload }) => {
         <span className="text-[10px] text-sky-400 uppercase tracking-wider font-semibold">JSON Parameters</span>
       </div>
       <pre className="p-3 text-xs font-mono text-emerald-400 overflow-x-auto max-h-72 whitespace-pre leading-relaxed selection:bg-slate-700">
-        <code>{formattedJson}</code>
+        {renderHighlightedContent(formattedJson)}
       </pre>
     </div>
   );
