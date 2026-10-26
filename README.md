@@ -5,6 +5,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7%2B-blue.svg)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18.3-cyan.svg)](https://react.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-3.4-38bdf8.svg)](https://tailwindcss.com/)
+[![Docker](https://img.shields.io/badge/Docker-Supported-2496ED.svg?logo=docker)](https://www.docker.com/)
 
 > **Zero-Trust Reverse Proxy & Real-Time Human-in-the-Loop Gateway for Autonomous AI Coding Agents and Model Context Protocol (MCP) Tool Calls.**
 
@@ -62,7 +63,10 @@ flowchart LR
 
 ```text
 Warden-AI/
+├── docker-compose.yml          # One-command orchestration for all services
 ├── backend/
+│   ├── Dockerfile              # Multi-stage Node 20 Alpine build
+│   ├── .dockerignore
 │   ├── src/
 │   │   ├── index.ts           # Express & WebSocket server entrypoint
 │   │   ├── db/
@@ -76,6 +80,9 @@ Warden-AI/
 │   ├── package.json
 │   └── tsconfig.json
 ├── frontend/
+│   ├── Dockerfile              # Multi-stage Vite build → Nginx serving
+│   ├── .dockerignore
+│   ├── nginx.conf              # Nginx reverse proxy for API & WebSocket
 │   ├── src/
 │   │   ├── App.tsx            # Main Zero-Trust Command Center UI
 │   │   ├── components/
@@ -138,6 +145,38 @@ npm run test:agent
 1. **Terminal 3 pauses and holds:** The agent prints `STATUS: WAITING FOR HUMAN OPERATOR APPROVAL` with an active timer.
 2. **Dashboard lights up:** The intercepted tool call pops up in the React dashboard with the file path (`src/core/auth.ts`) and proposed code diff.
 3. **Approve or Reject:** Click **"Approve Action"** to unblock the agent with HTTP 200, or **"Reject Action"** to abort the operation with HTTP 403.
+
+---
+
+## 🐳 Docker Deployment (One-Command Setup)
+
+### Prerequisites
+- [Docker](https://docs.docker.com/get-docker/) v20+ and [Docker Compose](https://docs.docker.com/compose/install/) v2+
+
+### Launch Everything
+
+```bash
+git clone https://github.com/hariom123-dev/Warden-AI.git
+cd Warden-AI
+docker compose up --build
+```
+
+| Service | URL |
+|---------|-----|
+| **Security Dashboard** | [http://localhost:5173](http://localhost:5173) |
+| **Backend API / WebSocket** | [http://localhost:3001](http://localhost:3001) |
+
+### Stop & Cleanup
+
+```bash
+# Stop all services
+docker compose down
+
+# Stop and remove persisted SQLite data
+docker compose down -v
+```
+
+> **Note:** The SQLite audit trail is persisted in a Docker volume (`warden-data`). Use `docker compose down -v` to remove it when starting fresh.
 
 ---
 
