@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useWebSocket } from './hooks/useWebSocket';
 import { RequestCard } from './components/RequestCard';
+import { Alert } from './components/Alert';
 import {
   ShieldCheck,
   ShieldAlert,
@@ -12,7 +13,8 @@ import {
   Activity,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Flame
 } from 'lucide-react';
 
 interface AuditLogEntry {
@@ -25,7 +27,14 @@ interface AuditLogEntry {
 }
 
 export const App: React.FC = () => {
-  const { pendingRequests, setPendingRequests, connectionStatus, sendDecision } = useWebSocket();
+  const {
+    pendingRequests,
+    setPendingRequests,
+    connectionStatus,
+    breachAlert,
+    clearBreachAlert,
+    sendDecision
+  } = useWebSocket();
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [activeTab, setActiveTab] = useState<'pending' | 'audit'>('pending');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -84,24 +93,27 @@ export const App: React.FC = () => {
   const rejectedCount = auditLogs.filter((log) => log.status === 'rejected').length;
 
   return (
-    <div className="min-h-screen bg-[#0a0d14] text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#0a0d14] text-slate-100 flex flex-col relative">
+      {/* Full-Screen Lockdown Modal on Honeypot Intrusion */}
+      {breachAlert && <Alert breach={breachAlert} onDismiss={clearBreachAlert} />}
+
       {/* Top Navigation / Zero-Trust Bar */}
-      <header className="sticky top-0 z-50 bg-[#0d1322]/90 backdrop-blur-md border-b border-slate-800">
+      <header className="sticky top-0 z-40 bg-[#0d1322]/90 backdrop-blur-md border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 p-0.5 shadow-lg shadow-sky-950/40">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 to-indigo-600 p-0.5 shadow-lg shadow-rose-950/40">
               <div className="w-full h-full bg-[#0a0d14] rounded-[10px] flex items-center justify-center">
-                <Lock className="w-5 h-5 text-sky-400" />
+                <Lock className="w-5 h-5 text-rose-400" />
               </div>
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-bold text-base tracking-tight text-white">Strict-Control AI Harness</span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-sky-950 text-sky-400 border border-sky-800/60 font-mono">
-                  Gateway v1.0
+                <span className="font-bold text-base tracking-tight text-white">Warden-AI</span>
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-800/60 font-mono flex items-center gap-1">
+                  <Flame className="w-3 h-3 text-rose-400" /> Active IDS Engine
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-mono">Zero-Trust MCP Reverse Proxy & Human Approval Control Plane</p>
+              <p className="text-xs text-slate-400 font-mono">Autonomous AI Intrusion Detection & Zero-Trust Control Plane</p>
             </div>
           </div>
 
@@ -150,7 +162,11 @@ export const App: React.FC = () => {
             </div>
             <div className="flex items-center space-x-2">
               <Activity className="w-4 h-4 text-emerald-400" />
-              <span>Policy: <strong className="text-slate-200">Async Promise Hold (Zero-Trust)</strong></span>
+              <span>Policy: <strong className="text-slate-200">Zero-Trust Honeypot Trap</strong></span>
+            </div>
+            <div className="flex items-center space-x-2 text-rose-400">
+              <Flame className="w-4 h-4 text-rose-400 animate-pulse" />
+              <span>Honeypot: <strong className="text-rose-300">.env.decoy (ARMED)</strong></span>
             </div>
           </div>
 

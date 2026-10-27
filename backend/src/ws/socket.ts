@@ -64,6 +64,30 @@ export function broadcast(data: unknown): void {
   }
 }
 
+export function broadcastCriticalBreach(breachData: unknown): void {
+  if (!wss) return;
+  const payload = JSON.stringify({
+    type: 'CRITICAL_BREACH',
+    timestamp: new Date().toISOString(),
+    ...(typeof breachData === 'object' && breachData !== null ? breachData : { details: breachData })
+  });
+  for (const client of wss.clients) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(payload);
+    }
+  }
+}
+
+export function terminateAllConnections(reason = 'CRITICAL_BREACH: Intrusion Honeypot Triggered'): void {
+  if (!wss) return;
+  console.error(`[WebSocket] Terminating all client connections: ${reason}`);
+  for (const client of wss.clients) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.close(1008, reason);
+    }
+  }
+}
+
 function handleApprovalDecision(msg: ApprovalDecisionPayload): void {
   const { id, decision, reason } = msg;
   const status: AuditLogStatus = decision === 'approved' ? 'approved' : 'rejected';

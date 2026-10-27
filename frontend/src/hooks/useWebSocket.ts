@@ -11,16 +11,30 @@ export interface PendingRequest {
   timestamp: string;
 }
 
+export interface CriticalBreachData {
+  id?: string;
+  severity?: string;
+  agent_name: string;
+  session_id: string;
+  target_file: string;
+  action_type: string;
+  reason?: string;
+  timestamp: string;
+}
+
 interface WebSocketHookResult {
   pendingRequests: PendingRequest[];
   setPendingRequests: React.Dispatch<React.SetStateAction<PendingRequest[]>>;
   connectionStatus: ConnectionStatus;
+  breachAlert: CriticalBreachData | null;
+  clearBreachAlert: () => void;
   sendDecision: (id: string, decision: 'approved' | 'rejected', reason?: string) => void;
 }
 
 export function useWebSocket(url?: string): WebSocketHookResult {
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
+  const [breachAlert, setBreachAlert] = useState<CriticalBreachData | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
 
@@ -70,6 +84,18 @@ export function useWebSocket(url?: string): WebSocketHookResult {
             setPendingRequests((prev) =>
               prev.filter((req) => req.id !== data.id)
             );
+          } else if (data.type === 'CRITICAL_BREACH') {
+            console.error('[WebSocket] CRITICAL BREACH EVENT RECEIVED:', data);
+            setBreachAlert({
+              id: data.id,
+              severity: data.severity || 'CRITICAL',
+              agent_name: data.agent_name || 'unknown-agent',
+              session_id: data.session_id || 'unknown-session',
+              target_file: data.target_file || '.env.decoy',
+              action_type: data.action_type || 'read_file',
+              reason: data.reason || 'Cryptographic Decoy Honeypot Triggered',
+              timestamp: data.timestamp || new Date().toISOString()
+            });
           }
         } catch (err) {
           console.error('[WebSocket] Failed to process incoming message:', err);
@@ -83,7 +109,7 @@ export function useWebSocket(url?: string): WebSocketHookResult {
       ws.onclose = () => {
         if (!isMounted) return;
         setConnectionStatus('disconnected');
-        console.warn('[WebSocket] Connection lost. Attempting reconnection in 3s...');
+        console.warn('[WebSocket] Connection closed. Attempting reconnection in 3s...');
         reconnectTimeoutRef.current = window.setTimeout(() => {
           connect();
         }, 3000);
@@ -120,10 +146,16 @@ export function useWebSocket(url?: string): WebSocketHookResult {
     }
   }, []);
 
+  const clearBreachAlert = useCallback(() => {
+    setBreachAlert(null);
+  }, []);
+
   return {
     pendingRequests,
     setPendingRequests,
     connectionStatus,
+    breachAlert,
+    clearBreachAlert,
     sendDecision
   };
 }

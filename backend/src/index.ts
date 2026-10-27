@@ -3,7 +3,8 @@ import http from 'http';
 import cors from 'cors';
 import { initDatabase, getAllAuditLogs, getAuditLogById } from './db/client';
 import { initWebSocketServer } from './ws/socket';
-import mcpRouter from './proxy/interceptor';
+import mcpRouter from './routes/mcp';
+import { initHoneypot, getQuarantinedSessions } from './security/honeypot';
 
 const app = express();
 const server = http.createServer(app);
@@ -17,11 +18,23 @@ app.use(express.json({ limit: '10mb' }));
 // Database Initialization on startup
 initDatabase();
 
+// Arm Cryptographic Decoy Honeypot IDS
+initHoneypot();
+
 // Initialize WebSocket Control Stream on HTTP Server
 const wss = initWebSocketServer(server);
 
 // Mount MCP Proxy Interceptor Router
 app.use('/api/mcp', mcpRouter);
+
+// Honeypot & Quarantine Status endpoint
+app.get('/api/ids/status', (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'armed',
+    honeypot_file: '.env.decoy',
+    quarantined_sessions: getQuarantinedSessions()
+  });
+});
 
 // Health & System Info
 app.get('/health', (_req: Request, res: Response) => {
